@@ -1,0 +1,103 @@
+import sys, os
+import argparse
+from tqdm import tqdm
+import numpy as np
+import random
+import torch
+from torch_geometric.loader import DataLoader
+import torch.nn.functional as F
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+
+from src.dataset import GraphMatchingDataset
+from src.subproblem_dataset import GraphMatchingSubproblemDataset
+from src.model import LinkGNN
+from src.utils import run_inference, training_step_link, validation_step_link
+from src.utils import normalized_mae, exact_hit_rate
+
+# python main.py --data data/aids/ --log --epoch 50 --save_ckp models/model_aids_88x40.pt --np 88 --ns 40 --max_train_steps 0.5
+
+
+
+
+def main(args):
+    root = args.data
+    
+    train_dataset = GraphMatchingSubproblemDataset(root=root, num_pairs=1000*args.np, num_instances_per_pair=args.ns, split='train')
+    val_dataset = GraphMatchingSubproblemDataset(root=root, num_pairs=100, num_instances_per_pair=args.ns, split='val')
+    val_dataset_inf = GraphMatchingDataset(root=root, num_pairs=2000, split='val')
+    print(train_dataset[0])
+    num_node_labels = train_dataset[0].x.shape[1]
+    num_edge_labels = train_dataset[0].edge_attr.shape[1]
+ 
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=1024, shuffle=False, pin_memory=True)
+    
+
+    model = LinkGNN(num_node_labels, num_edge_labels, 128, args.layers, args.nc, args.ec)
+    model = model.to(args.device)
+    model.train()
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+    best_nmae = 1e10
+    for epoch in tqdm(range(args.epochs), ncols=64):
+        epoch_loss, epoch_acc = training_step_link(model, train_loader, optimizer, args)
+        epoch_val_loss, epoch_val_acc = validation_step_link(model, val_loader, args)
+        
+        costs, true_costs = run_inference(model, val_dataset_inf, k=1, batch_size=64, disable_tqdm=True)
+
+
+        nmae = normalized_mae(costs, true_costs)
+        ehr = exact_hit_rate(costs, true_costs)
+        print(f'{epoch_loss:.6f} {epoch_acc:.5f}  {epoch_val_loss:.6f} {epoch_val_acc:.5f}  {nmae:.5f} {ehr:.5f}')
+        if args.log and args.save_ckp:
+            with open(args.save_ckp.rsplit('.', 1)[0]+"_train.log", "a") as f:
+                f.write(f'{epoch_loss:.6f} {epoch_acc:.5f}  {epoch_val_loss:.6f} {epoch_val_acc:.5f}  {nmae:.5f} {ehr:.5f}\n')
+        if args.save_ckp is not None and (nmae < best_nmae):
+            best_nmae = nmae
+            torch.save(model.to('cpu').state_dict(), args.save_ckp)
+            model.to(args.device)
+    
+
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--epochs', type=int, default=15)
+
+    parser.add_argument('--layers', type=int, default=5)
+    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--weight_decay', type=float, default=1e-3)
+    parser.add_argument('--max_train_steps', type=float, default=1.0)
+
+    parser.add_argument('--data', type=str, default=None)
+    parser.add_argument('--np', type=int, default=None)
+    parser.add_argument('--ns', type=int, default=None)
+    parser.add_argument('--ec', type=float, default=1.0)
+    parser.add_argument('--nc', type=float, default=1.0)
+
+    parser.add_argument('--save_ckp', type=str, default=None)
+
+
+    parser.add_argument('--log', action='store_true')
+    parser.add_argument('--nocuda', action='store_true')
+
+    args = parser.parse_args()
+
+
+    args.device = torch.device("cuda" if (torch.cuda.is_available() and (not args.nocuda)) else "cpu")
+    print(args)
+    if args.log and args.save_ckp:
+        with open(args.save_ckp.rsplit('.', 1)[0]+"_train.log", "w") as f:
+            f.write(str(args)+'\n')
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.set_printoptions(linewidth=200)
+    torch.set_printoptions(edgeitems=20)
+
+    main(args)
