@@ -32,7 +32,7 @@ python test.py --data data/zinc-16/ --load_ckp checkpoints/model_zinc.pt --k 32 
 
 ```
 @inproceedings{
-  pellizzoni2025gelato,
+  pellizzoni2026gelato,
   title={Gelato: Graph Edit Distance via Autoregressive Neural Combinatorial Optimization},
   author={Paolo Pellizzoni and Till Hendrik Schulz and Karsten Borgwardt},
   booktitle={International Conference on Learning Representations},
