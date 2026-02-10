@@ -10,7 +10,7 @@ Moreover, ```src/dataset.py``` contains a dataset class with the GED datasets us
 
 Example usage: 
 ```
-python train.py --data aids --load_ckp checkpoints/model_aids.pt
+python train.py --data aids --save_ckp checkpoints/model_aids.pt
 ```
 
 ### Testing
