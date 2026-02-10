@@ -189,7 +189,7 @@ def training_step_link(model, loader, optimizer, args):
         if ii >= args.max_train_steps * len(loader):
             break
 
-    print( cntp, cntn, cnt, len(loader) )
+    # print( cntp, cntn, cnt, len(loader) )
 
     epoch_loss /= len(loader)
     epoch_acc /= cnt

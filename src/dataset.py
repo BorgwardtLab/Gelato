@@ -1,8 +1,6 @@
-import sys, os
-import numpy as np
-from torch_geometric.data import Data, Dataset, Batch, InMemoryDataset
+import os
+from torch_geometric.data import Data, InMemoryDataset
 import torch_geometric
-from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch
 import random
@@ -127,7 +125,7 @@ class GraphMatchingDataset(InMemoryDataset):
         'zinc-16-edge-unlabeled':   '1GWts3DTAjsInZou_hZJkJM1o2fXPQqAx',
     }
 
-    def __init__(self, root=None, name='zinc-16', num_pairs=None, split=None, seed=0, bounds=None, transform=None):
+    def __init__(self, root='data/', name='aids', num_pairs=None, split=None, seed=0, bounds=None, transform=None):
         self.name = name
         self.num_pairs = num_pairs
         self.seed = seed
@@ -137,7 +135,7 @@ class GraphMatchingDataset(InMemoryDataset):
         assert (bounds is None) or (len(bounds) == 2)
         assert name in ['aids', 'linux', 'imdb-16', 'zinc-16', 'molhiv-16', 'code2-22', 'molhiv-16-edge-unlabeled', 'zinc-16-edge-unlabeled']
 
-        super().__init__(root)
+        super().__init__(root+name)
         self.load(self.processed_paths[0])
     
 

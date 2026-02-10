@@ -1,16 +1,15 @@
-import sys, os
+import os
 import argparse
-from tqdm import tqdm
 import numpy as np
 import random
 import statistics
 import time
+from tqdm import tqdm
 
 import torch
-from torch_geometric.loader import DataLoader
 import torch_geometric
+from torch_geometric.loader import DataLoader
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
-
 
 from src.dataset import GraphMatchingDataset
 from src.model import LinkGNN
@@ -20,19 +19,15 @@ from src.utils import normalized_mae, exact_hit_rate
 
 
 
-
-
 def main(args):
     random.seed(0)
 
-    root = args.data
-
-    dataset_inf = GraphMatchingDataset(root, num_pairs=args.num_samples, split=args.split, bounds=args.size_bounds)
-    print(dataset_inf[0])
+    dataset_inf = GraphMatchingDataset(name=args.data, num_pairs=args.num_samples, split=args.split, bounds=args.size_bounds)
+    
     num_node_labels = dataset_inf[0].x_s.shape[1]+2
     num_edge_labels = dataset_inf[0].edge_attr_s.shape[1]+1
 
-    model = LinkGNN(num_node_labels, num_edge_labels, 128, args.layers, args.nc, args.ec)
+    model = LinkGNN(num_node_labels, num_edge_labels, 128, args.layers, args.node_cost, args.edge_cost)
 
     model.load_state_dict(torch.load(args.load_ckp))
     model = model.to(args.device)
@@ -40,7 +35,7 @@ def main(args):
 
     maeL, nmaeL, rmseL, ehrL, rtimeL = [], [], [], [], []
     for seed in range(5):   
-        dataset_inf = GraphMatchingDataset(root, num_pairs=args.num_samples, split=args.split, bounds=args.size_bounds, seed=seed)
+        dataset_inf = GraphMatchingDataset(name=args.data, num_pairs=args.num_samples, split=args.split, bounds=args.size_bounds, seed=seed)
         startt = time.time()
         costs, true_costs = run_inference(model, dataset_inf, args.k, batch_size=32)
 
@@ -65,10 +60,11 @@ def main(args):
     ehr_m, ehr_s = statistics.mean(ehrL), statistics.stdev(ehrL)
     rtime_m, rtime_s = statistics.mean(rtimeL), statistics.stdev(rtimeL)
     
-    print(f"nMAE {nmae_m:.1f}, {nmae_s:.1f}, EHR {ehr_m:.1f}, {ehr_s:.1f},  MAE {mae_m:.3f}, {mae_s:.3f} , RMSE {rmse_m:.3f}, {rmse_s:.3f},  Time {rtime_m:.1f}, {rtime_s:.1f}")
+    print(f"nMAE {nmae_m:.1f}±{nmae_s:.1f}, EHR {ehr_m:.1f}±{ehr_s:.1f},  MAE {mae_m:.3f}±{mae_s:.3f} , RMSE {rmse_m:.3f}±{rmse_s:.3f},  Time {rtime_m:.1f}±{rtime_s:.1f}")
     if args.log:
         with open(args.log, "a") as f:
             f.write(f"MAE {mae_m:.3f} {mae_s:.3f}, nMAE {nmae_m:.3f} {nmae_s:.3f}, RMSE {rmse_m:.3f} {rmse_s:.3f}, EHR {ehr_m:.3f} {ehr_s:.3f},  Time {rtime_m:.3f} {rtime_s:.3f}")
+
 
 
 
@@ -77,19 +73,18 @@ if __name__ == "__main__":
 
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--data', type=str, default=None)
-    parser.add_argument('--load_ckp', type=str, default=None)
     parser.add_argument('--size_bounds', type=int, nargs=2, default=None)
     parser.add_argument('--split', type=str, default='test', choices=['test', 'larger'])
     parser.add_argument('--num_samples', type=int, default=1000)
 
     parser.add_argument('--layers', type=int, default=5)
-    parser.add_argument('--k', type=int, default=1)
+    parser.add_argument('--k', type=int, default=32)
 
-    parser.add_argument('--nc', type=float, default=1.0)
-    parser.add_argument('--ec', type=float, default=1.0)
+    parser.add_argument('--node_cost', type=float, default=1.0)
+    parser.add_argument('--edge_cost', type=float, default=1.0)
 
+    parser.add_argument('--load_ckp', type=str, default=None)
     parser.add_argument('--nocuda', action='store_true')
-
     parser.add_argument('--log', type=str, default=None)
 
     args = parser.parse_args()

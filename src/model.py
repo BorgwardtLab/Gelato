@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import GINEConv, global_add_pool
-from torch_geometric.utils import softmax, unbatch
+from torch_geometric.nn import GINEConv
+from torch_geometric.utils import unbatch
 from torch_geometric.data import Data, Batch
 from torch_scatter import scatter_max
 

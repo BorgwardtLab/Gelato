@@ -1,16 +1,10 @@
-import sys, os
-import numpy as np
-from torch_geometric.data import Data, Dataset, Batch, InMemoryDataset
-import torch_geometric
-from torch.utils.data import DataLoader
+from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch
-from torch_scatter import scatter, scatter_max
+from torch_scatter import scatter_max
 import random
-from collections import deque
 from tqdm import tqdm
 from joblib import Parallel, delayed
-import json
 import gdown, zipfile
 
 from .wl import WeisfeilerLeman
