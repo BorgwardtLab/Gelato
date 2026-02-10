@@ -10,7 +10,7 @@ Moreover, ```src/dataset.py``` contains a dataset class with the GED datasets us
 
 Example usage: 
 ```
-python test.py --data data/aids/ --load_ckp checkpoints/model_aids.pt --k 32
+python train.py --data aids --load_ckp checkpoints/model_aids.pt
 ```
 
 ### Testing
@@ -19,11 +19,11 @@ Checkpoints for Gelato are available in the ```checkpoints/``` folder.
 
 Example usage for in-distribution testing: 
 ```
-python test.py --data data/zinc-16/ --load_ckp checkpoints/model_zinc.pt --k 32
+python test.py --data zinc-16 --load_ckp checkpoints/model_zinc.pt
 ```
 Example usage for out-of-distribution testing:
 ```
-python test.py --data data/zinc-16/ --load_ckp checkpoints/model_zinc.pt --k 32 --split larger --size_bounds 17 18 --num_samples 500
+python test.py --data zinc-16 --load_ckp checkpoints/model_zinc.pt --split larger --size_bounds 17 18 --num_samples 500
 ```
 
 ### Citing our work
