@@ -18,7 +18,7 @@ def main(args):
     
     train_dataset = GraphMatchingSubproblemDataset(name=args.data, num_pairs=args.train_pairs, num_instances_per_pair=args.instances_per_pair, split='train')
     val_dataset = GraphMatchingSubproblemDataset(name=args.data, num_pairs=100, num_instances_per_pair=args.instances_per_pair, split='val')
-    val_dataset_inf = GraphMatchingDataset(name=args.data, num_pairs=1000, split='val')
+    val_dataset_inf = GraphMatchingDataset(name=args.data, num_pairs=2000, split='val')
     
     num_node_labels = train_dataset[0].x.shape[1]
     num_edge_labels = train_dataset[0].edge_attr.shape[1]
@@ -42,7 +42,6 @@ def main(args):
 
         nmae = normalized_mae(costs, true_costs)
         ehr = exact_hit_rate(costs, true_costs)
-        # print(f'{epoch_loss:.6f} {epoch_acc:.5f}  {epoch_val_loss:.6f} {epoch_val_acc:.5f}  {nmae:.5f} {ehr:.5f}')
         print(f'train-loss: {epoch_loss:.5f}, nMAE: {nmae:.5f}, EHR: {ehr:.5f}')
         if args.log and args.save_ckp:
             with open(args.save_ckp.rsplit('.', 1)[0]+"_train.log", "a") as f:
@@ -68,7 +67,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--data', type=str, default=None)
     parser.add_argument('--k', type=int, default=32)
-    parser.add_argument('--train_pairs', type=int, default=100000)
+    parser.add_argument('--train_pairs', type=int, default=None)
     parser.add_argument('--instances_per_pair', type=int, default=40)
     parser.add_argument('--node_cost', type=float, default=1.0)
     parser.add_argument('--edge_cost', type=float, default=1.0)
