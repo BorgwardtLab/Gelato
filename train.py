@@ -16,9 +16,9 @@ from src.utils import normalized_mae, exact_hit_rate
 
 def main(args):
     
-    train_dataset = GraphMatchingSubproblemDataset(name=args.data, num_pairs=args.train_pairs, num_instances_per_pair=args.instances_per_pair, split='train')
-    val_dataset = GraphMatchingSubproblemDataset(name=args.data, num_pairs=100, num_instances_per_pair=args.instances_per_pair, split='val')
-    val_dataset_inf = GraphMatchingDataset(name=args.data, num_pairs=2000, split='val')
+    train_dataset = GraphMatchingSubproblemDataset(name=args.data, root=args.root, num_pairs=args.train_pairs, num_instances_per_pair=args.instances_per_pair, split='train')
+    val_dataset = GraphMatchingSubproblemDataset(name=args.data, root=args.root, num_pairs=100, num_instances_per_pair=args.instances_per_pair, split='val')
+    val_dataset_inf = GraphMatchingDataset(name=args.data, root=args.root, num_pairs=2000, split='val')
     
     num_node_labels = train_dataset[0].x.shape[1]
     num_edge_labels = train_dataset[0].edge_attr.shape[1]
@@ -59,13 +59,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--root', type=str, default='data/')
+    parser.add_argument('--data', type=str, default=None)
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--layers', type=int, default=5)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--weight_decay', type=float, default=0.0)
     parser.add_argument('--max_train_steps', type=float, default=1.0)
 
-    parser.add_argument('--data', type=str, default=None)
     parser.add_argument('--k', type=int, default=32)
     parser.add_argument('--train_pairs', type=int, default=None)
     parser.add_argument('--instances_per_pair', type=int, default=40)

@@ -125,7 +125,7 @@ class GraphMatchingDataset(InMemoryDataset):
         'zinc-16-edge-unlabeled':   '1GWts3DTAjsInZou_hZJkJM1o2fXPQqAx',
     }
 
-    def __init__(self, root='data/', name='aids', num_pairs=None, split=None, seed=0, bounds=None, transform=None):
+    def __init__(self, name, root='data/', num_pairs=None, split=None, seed=0, bounds=None, transform=None):
         self.name = name
         self.num_pairs = num_pairs
         self.seed = seed
@@ -135,7 +135,7 @@ class GraphMatchingDataset(InMemoryDataset):
         assert (bounds is None) or (len(bounds) == 2)
         assert name in ['aids', 'linux', 'imdb-16', 'zinc-16', 'molhiv-16', 'code2-22', 'molhiv-16-edge-unlabeled', 'zinc-16-edge-unlabeled']
 
-        super().__init__(root+name)
+        super().__init__(os.path.join(root, name))
         self.load(self.processed_paths[0])
     
 
