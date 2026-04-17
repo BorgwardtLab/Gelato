@@ -3,8 +3,7 @@
 Datasets and code for the paper: "Gelato: Graph Edit Distance via Autoregressive Neural Combinatorial Optimization", published at ICLR 2026. The paper is available [here](https://openreview.net/forum?id=6ZTcLNmguc).
 
 The repository provides code for training and testing the Gelato model. 
-
-Moreover, ```src/dataset.py``` contains a dataset class with the GED datasets used in the paper. We provide pre-computed train-val-test splits with no data leakage, ground-truth optimal matchings, and out-of-distribution data in the ```larger``` data split. 
+Moreover, ```src/dataset.py``` contains a dataset class with the GED datasets used in the paper. 
 
 ### Training
 
@@ -31,7 +30,35 @@ Example usage for out-of-distribution testing:
 python test.py --data zinc-16 --load_ckp checkpoints/model_zinc.pt --split larger --size_bounds 17 18 --num_samples 500
 ```
 
-### Citing our work
+## Datasets
+
+In ```src/dataset.py```, we provide easy-to-use datasets with several improvements over existing ones:
+- We provide pre-computed train-val-test splits with **no data leakage** (due to graph isomorphism) across splits.
+- The datasets have both edge-labeled and edge-unlabeled variants of graphs.
+- We provide optimal solutions for graphs **up to 30 nodes** to test for out-of-distribution generalization, in the ```larger``` data split.
+
+Example usage:
+
+```python
+from src.dataset import GraphMatchingDataset
+
+# Get 1000 graph pairs from the test split of the AIDS dataset
+dataset = GraphMatchingDataset(name='aids', root='data/', num_pairs=1000, split='test')
+
+# Get 1000 graph pairs from the 'larger' split of the ZINC-16 dataset
+dataset = GraphMatchingDataset(name='zinc-16', root='data/', num_pairs=1000, split='larger')
+
+# Get 1000 graph pairs with graphs between 23 and 26 nodes from the 'larger' split of the code2-22 dataset
+dataset = GraphMatchingDataset(name='code2-22', root='data/', num_pairs=1000, split='larger', bounds=(23, 26))
+
+for data in dataset:
+  graph_1 = Data(x=data.x_s, edge_index=data.edge_index_s, edge_attr=data.edge_attr_s)
+  graph_2 = Data(x=data.x_t, edge_index=data.edge_index_t, edge_attr=data.edge_attr_t)
+  optimal_matching = data.matching.long()
+```
+
+
+## Citing our work
 
 Please cite our ICLR 2026 paper in case you find Gelato useful for your applications.
 
