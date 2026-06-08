@@ -221,3 +221,81 @@ class LinkGNN(nn.Module):
         return [ matchingL[b][bestiL[b]] for b in range(B) ]
 
 
+    @torch.no_grad()
+    def simple_inference(self, source, target):
+        device = next(self.parameters()).device
+        out_device = source.x.device
+
+        n_s = source.x.shape[0]
+        n_t = target.x.shape[0]
+        N   = n_s + n_t + 1   # +1 dummy node
+
+        # ---- build the combined source+target graph (+1 dummy node) ----
+        dummy = torch.zeros((1, source.x.shape[1]))
+        x = torch.cat([source.x, target.x, dummy], dim=0).float()
+
+        # target node indices are shifted by n_s in the combined graph
+        edge_index = torch.cat([source.edge_index, target.edge_index + n_s], dim=1).long()
+
+        # real edges get a trailing 0 in the extra "is-matching-edge" channel
+        edge_attr = torch.cat([source.edge_attr, target.edge_attr], dim=0).float()
+        edge_attr = torch.cat([edge_attr, torch.zeros((edge_attr.shape[0], 1))], dim=1)
+
+        # node features get a 2-dim [is_source, is_target] tag 
+        tag = torch.zeros((N, 2))
+        tag[:n_s, 0] = 1
+        tag[n_s:-1, 1] = 1
+        x = torch.cat([x, tag], dim=1)
+
+        instance = Data(x=x, edge_index=edge_index, edge_attr=edge_attr).to(device)
+        instance.matching_index = torch.zeros((2, 0), dtype=torch.long, device=device)
+
+        # ---- bookkeeping ----
+        matching  = torch.full((n_s,), -2, dtype=torch.long, device=device)
+        unmatched = torch.ones(N, dtype=torch.bool, device=device)  # global, per-node
+        unmatched[-1] = False
+
+        # ---- greedy loop: match one (source, target) pair per step ----
+        for _ in range(min(n_s, n_t)):
+            # ---- prune: drop matched nodes whose pair is surrounded by matched nodes ----
+            ei = instance.edge_index
+            # a node "has an unmatched neighbor" if any of its neighbors is unmatched
+            has_unmatched_neigh = scatter_max(unmatched[ei[1]].float(), ei[0], dim=0, dim_size=N)[0] > 0.5
+            has_unmatched_neigh = has_unmatched_neigh | unmatched
+            s_idx, t_idx = instance.matching_index
+            both = has_unmatched_neigh[s_idx] & has_unmatched_neigh[t_idx]
+            mask = has_unmatched_neigh
+            mask[s_idx] = both
+            mask[t_idx] = both
+            src, dst = ei
+            keep = mask[src] & mask[dst]
+            instance.edge_index = ei[:, keep]
+            instance.edge_attr  = instance.edge_attr[keep]
+
+            # ---- candidate pairs: all still-unmatched source x target nodes ----
+            s_nodes = unmatched[:n_s].nonzero(as_tuple=False).view(-1)        # local src ids
+            t_nodes = unmatched[n_s:n_s + n_t].nonzero(as_tuple=False).view(-1)  # local tgt ids
+            u, v = torch.cartesian_prod(s_nodes, t_nodes).t()
+            instance.edge_label_index = torch.stack([u, v + n_s], dim=0)
+
+            preds = self.forward(instance)        # one logit per candidate pair
+            best  = preds.argmax()
+            bu, bv = u[best], v[best]             # local source / target ids
+
+            # record the match
+            matching[bu]      = bv
+            gu, gv            = bu, bv + n_s      # global node ids
+            unmatched[gu]     = False
+            unmatched[gv]     = False
+
+            # add the chosen pair as a "matching" edge
+            new_ei = torch.tensor([[gu, gv], [gv, gu]], device=device, dtype=torch.long)
+            new_ea = torch.zeros((2, instance.edge_attr.shape[1]), device=device)
+            new_ea[:, -1] = 1
+            instance.edge_index = torch.cat([instance.edge_index, new_ei], dim=1)
+            instance.edge_attr  = torch.cat([instance.edge_attr,  new_ea], dim=0)
+            instance.matching_index = torch.cat(
+                [instance.matching_index, torch.stack([gu, gv]).view(2, 1)], dim=1
+            )
+
+        return matching.to(out_device)
